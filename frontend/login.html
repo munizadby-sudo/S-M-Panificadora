@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Padaria</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="login-page">
+
+<div id="tela-login">
+  <div class="login-box">
+
+    <div class="login-logo-wrap" id="login-logo-wrap">
+      <img id="login-logo-img" src="" alt="Logo" style="display:none;max-height:80px;border-radius:12px;">
+      <div id="login-logo-emoji" class="login-logo-emoji">🥖</div>
+    </div>
+
+    <div class="login-titulo" id="login-nome-loja">Padaria Dourada</div>
+    <div class="login-sub"    id="login-slogan">Sistema de Gestão PDV</div>
+
+    <div class="login-field">
+      <label>Usuário</label>
+      <input type="text" id="login-user" placeholder="Digite seu usuário"
+             autocomplete="username" autofocus
+             onkeydown="if(event.key==='Enter')document.getElementById('login-senha').focus()">
+    </div>
+    <div class="login-field">
+      <label>Senha</label>
+      <input type="password" id="login-senha" placeholder="••••••"
+             autocomplete="current-password"
+             onkeydown="if(event.key==='Enter')fazerLogin()">
+    </div>
+
+    <div class="login-erro" id="login-erro"></div>
+    <button class="btn-login" id="btn-login" onclick="fazerLogin()">Entrar →</button>
+    <p class="login-version">v2.0 · Node.js + MySQL · PDV Profissional</p>
+  </div>
+</div>
+
+<script>
+  const API_BASE = 'http://localhost:3000';
+
+  // Carrega config salva (nome/logo) sem precisar de token
+  function carregarConfigLocal() {
+    try {
+      const saved = sessionStorage.getItem('pdv_config');
+      if (saved) aplicarConfig(JSON.parse(saved));
+    } catch {}
+  }
+
+  function aplicarConfig(cfg) {
+    if (cfg.nome_loja) document.getElementById('login-nome-loja').textContent = cfg.nome_loja;
+    if (cfg.slogan)    document.getElementById('login-slogan').textContent    = cfg.slogan;
+    if (cfg.logo_path) {
+      const img   = document.getElementById('login-logo-img');
+      const emoji = document.getElementById('login-logo-emoji');
+      img.src             = API_BASE + cfg.logo_path;
+      img.style.display   = 'block';
+      emoji.style.display = 'none';
+    }
+  }
+
+  async function fazerLogin() {
+    const username = document.getElementById('login-user').value.trim();
+    const senha    = document.getElementById('login-senha').value;
+    const erroEl   = document.getElementById('login-erro');
+    const btn      = document.getElementById('btn-login');
+
+    erroEl.textContent = '';
+    if (!username || !senha) {
+      erroEl.textContent = 'Preencha usuário e senha.';
+      return;
+    }
+
+    btn.disabled    = true;
+    btn.textContent = 'Entrando...';
+
+    try {
+      const res  = await fetch(`${API_BASE}/api/auth/login`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ username, senha })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        erroEl.textContent = data.erro || 'Erro ao conectar.';
+        return;
+      }
+
+      sessionStorage.setItem('pdv_token',   data.token);
+      sessionStorage.setItem('pdv_usuario', JSON.stringify(data.usuario));
+      window.location.href = 'index.html';
+
+    } catch {
+      erroEl.textContent = '⚠️ Servidor indisponível. Verifique se o Node.js está rodando na porta 3000.';
+    } finally {
+      btn.disabled    = false;
+      btn.textContent = 'Entrar →';
+    }
+  }
+
+  // Redireciona se já tem sessão
+  if (sessionStorage.getItem('pdv_token')) window.location.href = 'index.html';
+  carregarConfigLocal();
+</script>
+</body>
+</html>

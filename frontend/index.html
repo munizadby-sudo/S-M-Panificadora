@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Padaria Dourada — PDV</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+  <!-- ══════ TOPBAR ══════ -->
+  <div class="topbar">
+    <div class="logo-area">
+      <img id="topbar-logo-img" src="" alt="Logo" style="display:none;height:34px;border-radius:8px;object-fit:contain;">
+      <span id="topbar-logo-emoji" style="font-size:22px;">🥖</span>
+      <div class="logo-text">
+        <span class="logo-nome" id="topbar-nome">Padaria Dourada</span>
+        <span class="logo-sub"  id="topbar-slogan">Sistema PDV</span>
+      </div>
+    </div>
+
+    <nav class="tab-nav" id="tab-nav">
+      <button data-tab="caixa"      onclick="showTab('caixa')">🛒 Caixa</button>
+      <button data-tab="encomendas" onclick="showTab('encomendas')">📦 Encomendas</button>
+      <button data-tab="estoque"    onclick="showTab('estoque')">📊 Estoque</button>
+      <button data-tab="fluxo"      onclick="showTab('fluxo')">💰 Fluxo</button>
+      <button data-tab="rel"        onclick="showTab('rel')">📈 Relatórios</button>
+      <button data-tab="produtos"   onclick="showTab('produtos')">🗂 Produtos</button>
+      <button data-tab="admin"      onclick="showTab('admin')" style="display:none;">👑 Usuários</button>
+      <button data-tab="config"     onclick="showTab('config')" style="display:none;">⚙️ Config</button>
+    </nav>
+
+    <div class="topbar-right">
+      <span class="operador-info" id="operador-info"></span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+      <span class="relogio" id="relogio">--:--</span>
+    </div>
+  </div>
+
+  <!-- ══════ CAIXA ══════ -->
+  <div class="main" id="tela-caixa">
+    <div id="caixa-turno-banner"></div>
+    <div class="caixa-corpo">
+      <div class="caixa-esq">
+        <div class="prod-header">
+          <input class="busca-prod" type="text" id="busca" placeholder="🔍 Buscar produto..." oninput="renderGrid()">
+        </div>
+        <div class="cat-tabs" id="cats"></div>
+        <div class="grid-prod" id="grid"></div>
+      </div>
+      <div class="caixa-dir">
+        <div class="venda-header">
+          <span>Itens do pedido</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span class="num-badge" id="badge">0</span>
+            <button class="btn-limpar" onclick="limpar()">Limpar</button>
+          </div>
+        </div>
+        <div class="venda-itens" id="itens"></div>
+      </div>
+    </div>
+    <div class="rodape">
+      <button class="pgto-btn sel" id="btn-dinheiro" onclick="setPgto('dinheiro')"><span class="picon">💵</span>Dinheiro</button>
+      <button class="pgto-btn"     id="btn-cartao"   onclick="setPgto('cartao')"><span class="picon">💳</span>Débito</button>
+      <button class="pgto-btn"     id="btn-credito"  onclick="setPgto('credito')"><span class="picon">💳</span>Crédito</button>
+      <button class="pgto-btn"     id="btn-pix"      onclick="setPgto('pix')"><span class="picon">📱</span>Pix</button>
+      <div class="total-painel">
+        <div class="desc-row">
+          <label>Desconto</label>
+          <input class="inp-small" type="number" id="desc-val" min="0" value="0" style="width:56px;" oninput="renderRodape()">
+          <select class="inp-small" id="desc-tipo" onchange="renderRodape()">
+            <option value="pct">%</option>
+            <option value="rs">R$</option>
+          </select>
+        </div>
+        <div id="totais"></div>
+      </div>
+      <button class="btn-cobrar" onclick="cobrar()">COBRAR<span class="sub">▶ registrar venda</span></button>
+    </div>
+  </div>
+
+  <!-- ══════ ENCOMENDAS ══════ -->
+  <div class="main" id="tela-encomendas">
+    <div class="enc-topo">
+      <h2>📦 Encomendas</h2>
+      <button class="btn-prim" onclick="abrirModalEnc()">+ Nova Encomenda</button>
+    </div>
+    <div class="enc-filtros">
+      <button class="enc-filtro active" onclick="setFiltroEnc('todos')">Todas</button>
+      <button class="enc-filtro" onclick="setFiltroEnc('pendente')">⏳ Pendentes</button>
+      <button class="enc-filtro" onclick="setFiltroEnc('pronto')">✅ Prontas</button>
+      <button class="enc-filtro" onclick="setFiltroEnc('entregue')">📬 Entregues</button>
+    </div>
+    <div class="enc-grid" id="enc-grid"></div>
+    <p id="enc-vazio" style="font-size:13px;color:var(--muted);text-align:center;display:none;padding:20px;">Nenhuma encomenda.</p>
+  </div>
+
+  <!-- ══════ ESTOQUE ══════ -->
+  <div class="main" id="tela-estoque">
+    <div class="est-header">
+      <h2>📊 Controle de Estoque</h2>
+      <div class="est-periodo">
+      </div>
+      <button class="btn-sec" onclick="salvarEstoque()" style="background:var(--green);color:var(--cream);border-color:var(--green);">💾 Salvar</button>
+    </div>
+    <div class="est-kpi-row" id="est-kpis"></div>
+    <div class="est-table-wrap">
+      <div class="est-table-header">
+        <h3>Produtos</h3>
+        <input class="busca-prod" type="text" id="busca-est" placeholder="🔍 Buscar..." style="width:180px;" oninput="renderEstoque()">
+        <button class="btn-sec" onclick="zerarEstoquePeriodo()" style="margin-left:8px;">🔄 Zerar</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="est-table">
+          <thead><tr>
+            <th>Ícone</th><th>Produto</th><th>Categoria</th>
+            <th>Inicial</th><th>Produzido</th><th>Vendido</th><th>Atual</th><th>Mín.</th><th>Status</th>
+          </tr></thead>
+          <tbody id="est-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════ FLUXO ══════ -->
+  <div class="main" id="tela-fluxo">
+    <div class="fluxo-header">
+      <h2>💰 Fluxo de Caixa</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <label style="font-size:11px;color:var(--muted);">Data:</label>
+        <input type="date" id="fluxo-data-filtro" class="fluxo-input" style="width:150px;" onchange="carregarFluxo()">
+        <button class="btn-sec" onclick="document.getElementById('fluxo-data-filtro').value=hoje();carregarFluxo()">Hoje</button>
+      </div>
+    </div>
+    <div class="fluxo-kpi-row" id="fluxo-kpis"></div>
+    <div class="fluxo-novo">
+      <h3>Novo Lançamento</h3>
+      <div class="fluxo-tipo-sel">
+        <button class="tipo-btn ativo-entrada" id="tipo-entrada" onclick="setTipoFluxo('entrada')">⬆ Entrada</button>
+        <button class="tipo-btn" id="tipo-saida" onclick="setTipoFluxo('saida')">⬇ Saída</button>
+      </div>
+      <div class="fluxo-form">
+        <div><label>Descrição</label><input class="fluxo-input" type="text" id="fluxo-desc" placeholder="Ex: Pagamento fornecedor..."></div>
+        <div><label>Categoria</label>
+          <select class="fluxo-input" id="fluxo-cat">
+            <option value="vendas">Vendas</option>
+            <option value="compras">Compras / Insumos</option>
+            <option value="funcionarios">Funcionários</option>
+            <option value="manutencao">Manutenção</option>
+            <option value="outros">Outros</option>
+          </select>
+        </div>
+        <div><label>Forma</label>
+          <select class="fluxo-input" id="fluxo-forma">
+            <option value="dinheiro">Dinheiro</option>
+            <option value="pix">Pix</option>
+            <option value="cartao">Cartão</option>
+            <option value="transferencia">Transferência</option>
+          </select>
+        </div>
+        <div><label>Valor (R$)</label><input class="fluxo-input" type="number" id="fluxo-val" min="0" step="0.01" placeholder="0,00"></div>
+        <button class="btn-lancar entrada" id="btn-lancar" onclick="lancarFluxo()">+ Lançar</button>
+      </div>
+    </div>
+    <div class="fluxo-table-wrap">
+      <div class="fluxo-table-header">
+        <h3>Lançamentos do dia</h3>
+        <button class="btn-sec" onclick="exportarFluxoCSV()">⬇ CSV</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="fluxo-table">
+          <thead><tr><th>Hora</th><th>Tipo</th><th>Descrição</th><th>Categoria</th><th>Forma</th><th>Valor</th><th></th></tr></thead>
+          <tbody id="fluxo-body"></tbody>
+        </table>
+      </div>
+      <p id="fluxo-vazio" style="font-size:13px;color:var(--muted);text-align:center;padding:20px;display:none;">Nenhum lançamento.</p>
+    </div>
+  </div>
+
+  <!-- ══════ RELATÓRIOS ══════ -->
+  <div class="main" id="tela-rel">
+    <div class="rel-header">
+      <h2>📈 Dashboard de Vendas</h2>
+      <div class="rel-date-filter">
+        <label>De:</label><input type="date" id="rel-data-ini" onchange="renderRel()">
+        <label>Até:</label><input type="date" id="rel-data-fim" onchange="renderRel()">
+        <button class="btn-sec" onclick="setRelHoje()">Hoje</button>
+      </div>
+    </div>
+    <div class="kpi-grid" id="rel-kpis"></div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="chart-title"><span>⏰</span>Vendas por Hora</div><div class="hourly-chart" id="hourly-chart"></div></div>
+      <div class="chart-card"><div class="chart-title"><span>💳</span>Por Forma de Pagamento</div><div class="pgto-bars" id="pgto-bars"></div></div>
+    </div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="chart-title"><span>🏆</span>Top 5 Produtos</div><div class="top-prod-list" id="top-prods"></div></div>
+      <div class="chart-card"><div class="chart-title"><span>📊</span>Resumo</div><div id="resumo-fin"></div></div>
+    </div>
+    <div class="rel-actions-row">
+      <span style="font-size:13px;color:var(--gold);">Detalhamento</span>
+      <span style="flex:1;"></span>
+      <button class="btn-sec" onclick="exportarCSV()">⬇ CSV</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="rel-table">
+        <thead><tr><th>#</th><th>Data/Hora</th><th>Operador</th><th>Itens</th><th>Desc.</th><th>Total</th><th>Pgto</th><th>Status</th><th></th></tr></thead>
+        <tbody id="rel-body"></tbody>
+      </table>
+    </div>
+    <p id="rel-vazio" style="font-size:13px;color:var(--muted);text-align:center;padding:20px;display:none;">Nenhuma venda no período.</p>
+  </div>
+
+  <!-- ══════ PRODUTOS ══════ -->
+  <div class="main" id="tela-produtos">
+    <div>
+      <h2 style="font-size:15px;color:var(--gold2);margin-bottom:12px;">Cadastrar Produto</h2>
+      <div class="cad-form">
+        <div><label>Ícone</label><input class="cad-input" type="text" id="p-icone" placeholder="🥖" maxlength="4" style="font-size:20px;text-align:center;width:56px;"></div>
+        <div><label>Nome</label><input class="cad-input" type="text" id="p-nome" placeholder="Pão Francês" style="width:180px;"></div>
+        <div><label>Categoria</label><select class="cad-input" id="p-cat" style="width:130px;"></select></div>
+        <div><label>Preço (R$)</label><input class="cad-input" type="number" id="p-preco" placeholder="0,00" min="0" step="0.01" style="width:90px;"></div>
+        <div><label>Custo (R$)</label><input class="cad-input" type="number" id="p-custo" placeholder="0,00" min="0" step="0.01" style="width:90px;"></div>
+        <button class="btn-add" onclick="cadastrarProduto()">+ Adicionar</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;">
+        <span style="font-size:11px;color:var(--muted);">Nova categoria:</span>
+        <input class="cad-input" type="text" id="nova-cat" placeholder="Ex: Bolos" style="width:140px;">
+        <button class="btn-add" style="font-size:11px;padding:6px 12px;" onclick="adicionarCat()">+ Cat</button>
+      </div>
+    </div>
+    <div style="margin-top:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <h2 style="font-size:15px;color:var(--gold2);flex:1;">Produtos Cadastrados</h2>
+        <input class="busca-prod" type="text" id="busca-cad" placeholder="🔍 Buscar..." style="width:180px;" oninput="renderTabProd()">
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="prod-table">
+          <thead><tr><th>Ícone</th><th>Nome</th><th>Categoria</th><th>Preço</th><th>Custo</th><th>Margem</th><th>Ações</th></tr></thead>
+          <tbody id="prod-body"></tbody>
+        </table>
+      </div>
+      <p id="prod-vazio" style="font-size:13px;color:var(--muted);text-align:center;margin-top:16px;display:none;">Nenhum produto.</p>
+    </div>
+  </div>
+
+  <!-- ══════ ADMIN — USUÁRIOS ══════ -->
+  <div class="main" id="tela-admin">
+    <div class="admin-header">
+      <h2>👑 Gerenciar Usuários</h2>
+      <button class="btn-prim" onclick="abrirNovoUser()">+ Novo Usuário</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="rel-table">
+        <thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Permissões</th><th>Status</th><th>Ações</th></tr></thead>
+        <tbody id="users-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════ ADMIN — CONFIGURAÇÕES ══════ -->
+  <div class="main" id="tela-config">
+    <div class="admin-header"><h2>⚙️ Configurações do Sistema</h2></div>
+    <div class="config-section">
+      <h3>Identidade da Loja</h3>
+      <p class="config-desc">Personalize para qualquer nicho — padaria, confeitaria, lanchonete, etc.</p>
+      <div class="config-form">
+        <div><label>Nome da Loja</label><input class="cad-input" type="text" id="cfg-nome" placeholder="Padaria Dourada"></div>
+        <div><label>Slogan / Subtítulo</label><input class="cad-input" type="text" id="cfg-slogan" placeholder="Sistema de Gestão PDV"></div>
+        <button class="btn-prim" onclick="salvarConfig()">💾 Salvar</button>
+      </div>
+    </div>
+    <div class="config-section">
+      <h3>Logo da Loja</h3>
+      <p class="config-desc">Aparece no login e no topo. Formatos: JPG, PNG, SVG, WEBP (máx. 3 MB)</p>
+      <div class="logo-upload-area">
+        <img id="logo-preview" src="" alt="Logo atual" style="display:none;max-height:100px;border-radius:12px;">
+        <label class="btn-upload-logo" for="logo-input">📁 Escolher arquivo</label>
+        <input type="file" id="logo-input" accept="image/*" style="display:none;"
+               onchange="document.getElementById('logo-nome').textContent=this.files[0]?.name||''">
+        <span id="logo-nome" style="font-size:12px;color:var(--muted);"></span>
+        <button class="btn-prim" onclick="uploadLogoAdmin()">⬆ Enviar Logo</button>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: EDITAR PRODUTO ══════ -->
+<div class="modal-bg" id="modal-prod">
+  <div class="modal">
+    <h3>✏️ Editar Produto</h3>
+    <input type="hidden" id="edit-id">
+    <div class="modal-grid">
+      <div><label>Ícone</label><input class="cad-input" type="text" id="edit-icone" maxlength="4" style="font-size:20px;text-align:center;"></div>
+      <div><label>Preço (R$)</label><input class="cad-input" type="number" id="edit-preco" min="0" step="0.01"></div>
+      <div><label>Custo (R$)</label><input class="cad-input" type="number" id="edit-custo" min="0" step="0.01"></div>
+      <div></div>
+      <div class="modal-full"><label>Nome</label><input class="cad-input" type="text" id="edit-nome" style="width:100%;"></div>
+      <div class="modal-full"><label>Categoria</label><select class="cad-input" id="edit-cat" style="width:100%;"></select></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal('modal-prod')">Cancelar</button>
+      <button class="btn-modal-save"   onclick="salvarEdicaoProd()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: ENCOMENDA ══════ -->
+<div class="modal-bg" id="modal-enc">
+  <div class="modal">
+    <h3 id="enc-titulo">📦 Nova Encomenda</h3>
+    <input type="hidden" id="enc-edit-id">
+    <div class="modal-grid">
+      <div class="modal-full"><label>Cliente</label><input class="cad-input" type="text" id="enc-cliente" placeholder="Maria Silva" style="width:100%;"></div>
+      <div><label>Telefone</label><input class="cad-input" type="text" id="enc-fone" placeholder="(83) 99999-9999" style="width:100%;"></div>
+      <div><label>Data de Entrega</label><input class="cad-input" type="date" id="enc-data" style="width:100%;"></div>
+      <div><label>Sinal (R$)</label><input class="cad-input" type="number" id="enc-sinal" placeholder="0,00" min="0" step="0.01" style="width:100%;"></div>
+      <div class="modal-full"><label>Observações</label><input class="cad-input" type="text" id="enc-obs" placeholder="Ex: sem glúten..." style="width:100%;"></div>
+    </div>
+    <label style="font-size:10px;color:var(--muted);display:block;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">Itens da Encomenda</label>
+    <div id="enc-itens-modal"></div>
+    <div style="display:flex;gap:6px;margin-top:8px;">
+      <button class="btn-sec" style="font-size:11px;" onclick="addLinhaEnc()">+ Digitar item</button>
+      <button class="btn-sec" style="font-size:11px;border-color:var(--gold);color:var(--gold2);" onclick="abrirSeletorProd()">📋 Escolher da lista</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal('modal-enc')">Cancelar</button>
+      <button class="btn-modal-save"   onclick="salvarEncomenda()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: SELETOR PRODUTOS ══════ -->
+<div class="modal-bg" id="modal-seletor">
+  <div class="modal" style="max-width:560px;">
+    <h3>📋 Selecionar Produto</h3>
+    <input class="cad-input" type="text" id="busca-seletor" placeholder="🔍 Buscar produto..."
+           oninput="renderSeletor()" style="width:100%;margin-bottom:10px;">
+    <div id="seletor-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;max-height:300px;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal('modal-seletor')">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: USUÁRIO ══════ -->
+<div class="modal-bg" id="modal-user">
+  <div class="modal" style="max-width:500px;">
+    <h3>👤 Usuário</h3>
+    <input type="hidden" id="user-edit-id">
+    <div class="modal-grid">
+      <div class="modal-full"><label>Nome completo</label><input class="cad-input" type="text" id="u-nome" placeholder="Maria Silva" style="width:100%;"></div>
+      <div><label>Login (usuário)</label><input class="cad-input" type="text" id="u-user" placeholder="maria" style="width:100%;"></div>
+      <div>
+        <label>Senha <span style="color:var(--muted);font-size:10px;">(deixe vazio para manter)</span></label>
+        <input class="cad-input" type="password" id="u-senha" placeholder="••••••" autocomplete="new-password" style="width:100%;">
+      </div>
+      <div class="modal-full">
+        <label>Perfil</label>
+        <select class="cad-input" id="u-role" onchange="togglePermissoes()" style="width:100%;">
+          <option value="operador">Operador</option>
+          <option value="admin">Administrador</option>
+        </select>
+      </div>
+    </div>
+    <div id="perms-section" style="margin-top:12px;">
+      <label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px;">Permissões de acesso</label>
+      <div class="perms-grid">
+        <label class="perm-item"><input type="checkbox" id="perm-caixa"      value="caixa">      🛒 Caixa</label>
+        <label class="perm-item"><input type="checkbox" id="perm-encomendas" value="encomendas"> 📦 Encomendas</label>
+        <label class="perm-item"><input type="checkbox" id="perm-estoque"    value="estoque">    📊 Estoque</label>
+        <label class="perm-item"><input type="checkbox" id="perm-fluxo"      value="fluxo">      💰 Fluxo</label>
+        <label class="perm-item"><input type="checkbox" id="perm-rel"        value="rel">        📈 Relatórios</label>
+        <label class="perm-item"><input type="checkbox" id="perm-produtos"   value="produtos">   🗂 Produtos</label>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal('modal-user')">Cancelar</button>
+      <button class="btn-modal-save"   onclick="salvarUser()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: ABRIR CAIXA ══════ -->
+<div class="modal-bg" id="modal-abrir-caixa">
+  <div class="modal" style="max-width:420px;">
+    <h3>🟢 Abrir Caixa</h3>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">
+      Informe o fundo inicial disponível na gaveta para este turno.
+    </p>
+    <div class="modal-grid">
+      <div>
+        <label>💵 Espécie (cédulas)</label>
+        <input class="cad-input" type="number" id="abertura-especie"
+               min="0" step="0.01" value="40.00" style="width:100%;">
+      </div>
+      <div>
+        <label>🪙 Moedas</label>
+        <input class="cad-input" type="number" id="abertura-moedas"
+               min="0" step="0.01" value="5.00" style="width:100%;">
+      </div>
+    </div>
+    <div style="background:var(--card);border-radius:8px;padding:10px 14px;margin-top:4px;">
+      <span style="color:var(--muted);font-size:11px;">FUNDO TOTAL</span>
+      <span id="abertura-total" style="float:right;color:var(--gold2);font-weight:600;font-size:15px;">R$ 45,00</span>
+    </div>
+    <div style="margin-top:12px;">
+      <label>Turno</label>
+      <div id="abertura-periodo-label"
+           style="background:var(--card);border-radius:8px;padding:8px 14px;
+                  color:var(--gold2);font-weight:600;font-size:13px;margin-top:4px;">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal('modal-abrir-caixa')">Cancelar</button>
+      <button class="btn-modal-save" style="background:var(--green);border-color:var(--green);"
+              onclick="confirmarAberturaCaixa()">🟢 Abrir Caixa</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════ MODAL: FECHAR CAIXA ══════ -->
+<div class="modal-bg" id="modal-fechar-caixa">
+  <div class="modal" style="max-width:500px;">
+    <h3>🔴 Fechar Caixa</h3>
+    <p style="color:var(--muted);font-size:12px;margin-bottom:16px;">
+      Informe o que foi contado fisicamente. O sistema calculará a diferença.
+    </p>
+    <label style="font-size:10px;color:var(--muted);text-transform:uppercase;
+                  letter-spacing:0.5px;display:block;margin-bottom:8px;">
+      Contagem física
+    </label>
+    <div class="modal-grid">
+      <div>
+        <label>💵 Dinheiro contado</label>
+        <input class="cad-input" type="number" id="fechamento-dinheiro"
+               min="0" step="0.01" placeholder="0,00" style="width:100%;"
+               oninput="atualizarResumoFechamento()">
+      </div>
+      <div>
+        <label>🪙 Moedas contadas</label>
+        <input class="cad-input" type="number" id="fechamento-moedas"
+               min="0" step="0.01" placeholder="0,00" style="width:100%;"
+               oninput="atualizarResumoFechamento()">
+      </div>
+      <div>
+        <label>📱 Pix (extrato)</label>
+        <input class="cad-input" type="number" id="fechamento-pix"
+               min="0" step="0.01" placeholder="0,00" style="width:100%;"
+               oninput="atualizarResumoFechamento()">
+      </div>
+      <div>
+        <label>💳 Cartão (maquininha)</label>
+        <input class="cad-input" type="number" id="fechamento-cartao"
+               min="0" step="0.01" placeholder="0,00" style="width:100%;"
+               oninput="atualizarResumoFechamento()">
+      </div>
+      <div class="modal-full">
+        <label>Observação (opcional)</label>
+        <input class="cad-input" type="text" id="fechamento-obs"
+               placeholder="Ex: falta de troco, conferência ok..." style="width:100%;">
+      </div>
+    </div>
+    <div id="fechamento-resumo" style="
+      background:var(--card);border:1px solid var(--border);
+      border-radius:10px;padding:14px;margin-top:12px;display:none;">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;
+                  letter-spacing:0.5px;margin-bottom:10px;">Resumo do turno</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;
+                  gap:6px;font-size:11px;color:var(--muted);
+                  text-align:center;margin-bottom:6px;">
+        <span>Forma</span><span>Esperado</span><span>Diferença</span>
+      </div>
+      <div id="resumo-linhas"></div>
+      <div style="border-top:1px solid var(--border);margin-top:10px;
+                  padding-top:10px;display:flex;justify-content:space-between;
+                  align-items:center;">
+        <span style="font-size:12px;color:var(--muted);">DIFERENÇA TOTAL</span>
+        <span id="resumo-diferenca-total" style="font-size:16px;font-weight:700;"></span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="fecharModal('modal-fechar-caixa')">Cancelar</button>
+      <button class="btn-modal-save" style="background:var(--red);border-color:var(--red);"
+              onclick="confirmarFechamentoCaixa()">🔴 Fechar Caixa</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/caixaTurno.js"></script>
+<script src="js/app.js"></script>
+
+</body>
+</html>
