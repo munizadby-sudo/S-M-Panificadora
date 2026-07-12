@@ -1,204 +1,176 @@
-# 🥖 Padaria PDV v2.0
+# 🥖 Padaria PDV
 
-Sistema PDV completo para padarias com Node.js + MySQL + HTML/CSS/JS.
+Sistema de ponto de venda (PDV) e gestão para padarias, construído do zero para resolver um problema real de operação diária: **controlar venda, estoque, caixa e encomendas de uma padaria de bairro sem depender de planilha e papel.**
+
+> Projeto em produção, usado na operação real da Panificadora Souza (Campina Grande - PB).
 
 ---
 
-## 📁 Estrutura completa — onde colocar cada arquivo
+## 📌 O problema
+
+Padarias pequenas e médias no Brasil costumam operar com uma combinação frágil de caderno, planilha e memória do dono. Isso gera problemas recorrentes:
+
+- **Estoque sem controle real** — sobra e falta de insumo/produto sem visibilidade, perdas não registradas.
+- **Caixa sem rastreabilidade** — sem separação por turno/operador, é difícil saber quem fechou o caixa com diferença e quando.
+- **Vendas sem histórico consistente** — sem dado confiável não dá pra saber o que vende mais, em que horário, por qual forma de pagamento.
+- **Encomendas soltas** — pedidos por WhatsApp/caderno que se perdem ou são esquecidos.
+
+O Padaria PDV nasceu para substituir esse fluxo manual por um sistema web simples, rodando em um computador comum da loja, sem depender de infraestrutura cara ou de internet de alta qualidade.
+
+---
+
+## ✅ O que o sistema faz hoje
+
+| Módulo | Funcionalidade |
+|---|---|
+| **PDV / Caixa** | Venda com múltiplas formas de pagamento, abertura/fechamento de caixa por turno, controle de diferença de caixa |
+| **Produtos & Categorias** | Cadastro, precificação, ativação/desativação |
+| **Estoque** | Registro diário por produto, com **carryover automático** do saldo do fechamento anterior |
+| **Encomendas** | Cadastro, itens, status e histórico de pedidos de clientes |
+| **Fluxo de caixa** | Entradas e saídas manuais (contas, retiradas, despesas) |
+| **Perdas** | Registro de quebra/perda de produto, com motivo |
+| **Usuários & Permissões** | Login com JWT, papéis `admin`/`operador`, permissões granulares por módulo |
+| **Auditoria** | Log de toda ação sensível (quem, quando, o que mudou) |
+| **Configurações** | Nome da loja, logotipo, parâmetros gerais |
+
+### Em desenvolvimento
+- **Módulo de Funcionários e Folha de Pagamento** — cadastro de funcionários, pagamento quinzenal, vale, controle de falta, atestado e hora extra. Veja a proposta completa em [`docs/PRD-modulo-funcionarios.md`](docs/PRD-modulo-funcionarios.md).
+
+---
+
+## 🖼️ Screenshots
+
+> _Adicione aqui prints das telas principais: PDV/Caixa, Estoque, Encomendas, Relatórios. Recomendo salvar em `docs/screenshots/` e referenciar como abaixo._
+
+```md
+[Tela de Caixa](docs/screenshots/caixa.png)
+[Controle de Estoque](docs/screenshots/estoque.png)
+[Encomendas](docs/screenshots/encomendas.png)
+```
+
+---
+
+## 🏗️ Stack técnica
+
+**Backend**
+- Node.js + Express
+- MySQL (`mysql2`, pool de conexões)
+- JWT (`jsonwebtoken`) para autenticação stateless
+- `bcryptjs` para hash de senha
+- `helmet` (CSP, HSTS), `cors` com whitelist, `express-rate-limit` no login
+- `express-validator` para validação de entrada
+- `winston` para logging estruturado
+- `multer` para upload de logotipo
+- TypeScript configurado (`tsc`) para checagem de tipos gradual
+- Testes com `jest` + `supertest`
+
+**Frontend**
+- HTML/CSS/JS puro (vanilla), sem framework — proposital, para rodar leve em qualquer PC de loja sem build step
+- Consumo de API via `fetch` centralizado em `api.js`
+
+**Arquitetura**
+- API REST, autenticação via JWT em `Authorization: Bearer`
+- Permissões por módulo, checadas em middleware (`temPermissao`)
+- Transações de banco garantindo integridade em operações críticas (ex: venda = baixa de estoque + registro de venda + itens, tudo ou nada)
+- Auditoria automática de criação/edição/exclusão em tabelas sensíveis
+
+Veja o detalhamento completo em [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) e as decisões de design registradas em [`docs/adr/`](docs/adr/).
+
+---
+
+## 📁 Estrutura do projeto
 
 ```
 padaria-pdv/
-│
-├── backend/                          ← pasta do servidor Node.js
-│   ├── server.js                     ← ponto de entrada: node server.js
-│   ├── package.json
-│   ├── .env                          ← crie a partir do .env.example
-│   ├── .env.example
-│   │
+├── backend/
+│   ├── server.js              # bootstrap da aplicação
 │   ├── database/
-│   │   ├── db.js                     ← pool de conexão MySQL
-│   │   └── padaria.sql               ← execute isso no MySQL primeiro
-│   │
-│   ├── routes/
-│   │   ├── auth.js                   ← POST /api/auth/login
-│   │   ├── produtos.js               ← GET/POST/PUT/DELETE /api/produtos
-│   │   ├── categorias.js             ← GET/POST/DELETE /api/categorias
-│   │   ├── vendas.js                 ← GET/POST/DELETE /api/vendas
-│   │   ├── encomendas.js             ← CRUD /api/encomendas
-│   │   ├── estoque.js                ← GET/POST /api/estoque
-│   │   ├── fluxo.js                  ← CRUD /api/fluxo
-│   │   ├── usuarios.js               ← CRUD /api/usuarios
-│   │   ├── configuracoes.js          ← GET/PUT/POST /api/config
-│   │   ├── perdas.js                 ← CRUD /api/perdas (NOVO)
-│   │   └── caixa.js                  ← abertura/fechamento (NOVO)
-│   │
-│   ├── services/
-│   │   ├── vendaService.js           ← lógica de venda com transação completa
-│   │   └── auditService.js           ← gravação de audit_log
-│   │
-│   ├── middlewares/
-│   │   ├── auth.js                   ← gerarToken, autenticar, apenasAdmin
-│   │   ├── permission.js             ← temPermissao('modulo')
-│   │   ├── rateLimiter.js            ← proteção brute force no login
-│   │   └── errorHandler.js           ← handler global de erros
-│   │
-│   ├── uploads/                      ← logos enviadas (criada automaticamente)
-│   └── logs/                         ← pasta para logs futuros
-│
-└── frontend/                         ← pasta dos arquivos HTML/CSS/JS
-    ├── login.html                    ← tela de login
-    ├── index.html                    ← tela principal (PDV)
-    │
-    ├── css/
-    │   └── style.css                 ← todos os estilos
-    │
-    └── js/
-        ├── utils.js                  ← fmtR, hoje, showToast, baixarCSV
-        ├── api.js                    ← todas as chamadas HTTP centralizadas
-        ├── auth.js                   ← boot, logout, temPermissao
-        └── app.js                    ← lógica de todas as telas
+│   │   ├── db.js              # pool de conexão MySQL
+│   │   └── padaria.sql        # schema completo
+│   ├── routes/                # um arquivo por recurso REST
+│   ├── services/               # regras de negócio (venda, turno de caixa, auditoria)
+│   ├── middlewares/            # auth, permissão, rate limit, validação, erro
+│   └── tests/
+├── frontend/
+│   ├── login.html
+│   ├── index.html
+│   ├── css/style.css
+│   └── js/
+│       ├── api.js              # chamadas HTTP centralizadas
+│       ├── app.js              # lógica das telas
+│       ├── auth.js             # sessão e permissões
+│       └── utils.js
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── PRD-modulo-funcionarios.md
+    ├── SPEC-modulo-funcionarios.md
+    └── adr/                     # Architecture Decision Records
 ```
 
 ---
 
-## ⚡ Instalação passo a passo
+## ⚡ Rodando localmente
 
-### 1. Pré-requisitos
-- Node.js 18+ → https://nodejs.org
-- MySQL 8.0+ → https://dev.mysql.com/downloads/
-- Git (opcional)
+### Pré-requisitos
+- Node.js 18+
+- MySQL 8.0+
 
-### 2. Criar e popular o banco de dados
+### 1. Banco de dados
 ```bash
-# Entre no MySQL
-mysql -u root -p
-
-# Execute o schema
 mysql -u root -p < backend/database/padaria.sql
-
-# Ou dentro do MySQL:
-source /caminho/para/backend/database/padaria.sql
 ```
 
-### 3. Configurar variáveis de ambiente
+### 2. Variáveis de ambiente
 ```bash
 cd backend
-
-# Copie o modelo
 cp .env.example .env
-
-# Edite com seus dados
-nano .env   # ou notepad .env no Windows
 ```
+Preencha `DB_HOST`, `DB_USER`, `DB_PASS`, `DB_NAME` e um `JWT_SECRET` forte (string aleatória longa — **nunca** use um valor padrão em produção).
 
-Conteúdo do `.env`:
-```env
-DB_HOST=localhost
-DB_USER=root
-DB_PASS=sua_senha_mysql
-DB_NAME=padaria
-JWT_SECRET=cole_aqui_uma_string_aleatoria_longa_de_64_chars
-PORT=3000
-NODE_ENV=development
-ALLOWED_ORIGIN=http://localhost:3000
-```
-
-> **Gerar JWT_SECRET seguro:**
-> ```bash
-> node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-> ```
-
-### 4. Instalar dependências
+### 3. Instalar e rodar
 ```bash
-cd backend
 npm install
+npm run dev      # com nodemon, ambiente de desenvolvimento
+# ou
+npm start        # produção
 ```
 
-### 5. Iniciar o servidor
+O servidor sobe em `http://localhost:3000` e já serve o frontend estático.
+
+### 4. Testes
 ```bash
-# Produção
-npm start
-
-# Desenvolvimento (reinicia ao salvar)
-npm run dev
-```
-
-### 6. Acessar o sistema
-Abra no navegador: **http://localhost:3000**
-
-**Login padrão:**
-- Usuário: `admin`
-- Senha: `admin123`
-
-> ⚠️ **Troque a senha imediatamente após o primeiro login!**
-
----
-
-## 🔒 Segurança implementada
-
-| Recurso | Descrição |
-|---------|-----------|
-| JWT | Token com expiração de 12h |
-| bcrypt | Senhas com hash seguro |
-| Helmet | Headers HTTP de segurança |
-| CORS restrito | Apenas a origem configurada em `.env` |
-| Rate Limit | 10 tentativas de login por 15 minutos |
-| Permissões no backend | Cada rota verifica permissão do token |
-| Soft delete | Vendas canceladas, não deletadas |
-| Audit log | Toda ação importante é registrada |
-| Transações SQL | Venda + estoque + fluxo em uma só transação |
-
----
-
-## ✅ Correções aplicadas em relação à versão anterior
-
-1. **Estoque** — não é mais debitado ao adicionar item no carrinho. Só deduz após `COBRAR` com sucesso.
-2. **Vendas** — não são mais deletadas fisicamente. Usam `status = 'cancelada'` com motivo e estorno automático.
-3. **Fluxo de caixa** — ao cancelar venda, a entrada automática é revertida com um lançamento de estorno.
-4. **Transação atômica** — venda + itens + estoque + fluxo tudo na mesma `beginTransaction()`.
-5. **Permissões no backend** — middleware `temPermissao()` aplicado em todas as rotas.
-6. **Race condition** — número de pedido usa `SELECT ... FOR UPDATE` na mesma transação.
-7. **CORS** — restrito ao `ALLOWED_ORIGIN` do `.env`.
-8. **Rate limit** — 10 tentativas de login por 15 minutos.
-9. **Helmet** — headers de segurança HTTP ativados.
-10. **Map()** — lookups de produtos usam `Map` em vez de `array.find()` (O(1) vs O(n)).
-11. **Campo `custo`** — adicionado a produtos para calcular margem de lucro.
-12. **Campos padronizados** — `telefone` usado consistentemente em encomendas.
-
----
-
-## 📦 Dependências (package.json)
-
-```json
-{
-  "dependencies": {
-    "bcryptjs": "^2.4.3",
-    "cors": "^2.8.6",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "express-rate-limit": "^7.3.1",
-    "express-validator": "^7.1.0",
-    "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
-    "multer": "^1.4.5-lts.1",
-    "mysql2": "^3.9.4"
-  }
-}
+npm test
+npm run test:coverage
 ```
 
 ---
 
-## 🗺️ Roadmap v3.0 (React + Vite)
+## 🔐 Segurança
 
-O backend v2.0 já está pronto e não muda. A migração é 100% frontend:
+O projeto passou por uma rodada de auditoria e hardening, incluindo:
+- Eliminação de secret padrão de JWT em produção (o processo aborta se `JWT_SECRET` não estiver configurado)
+- CSP habilitada via `helmet`
+- CORS restrito por whitelist de origem
+- Rate limiting no endpoint de login (proteção contra força bruta)
+- Transações de banco em operações que envolvem múltiplas tabelas (venda, estoque)
+- Log de auditoria para ações administrativas
 
-```
-npm create vite@latest frontend-v3 -- --template react
-```
+Detalhes de cada decisão em [`docs/adr/`](docs/adr/).
 
-Tecnologias sugeridas:
-- **React 18** + **Vite**
-- **TanStack Query** — cache e sync com a API
-- **Zustand** — estado do carrinho
-- **shadcn/ui** — componentes acessíveis
-- **Recharts** — gráficos nativos React
+---
+
+## 🗺️ Roadmap
+
+- [x] PDV com controle de turno de caixa
+- [x] Estoque diário com carryover automático
+- [x] Hardening de segurança (CORS, CSP, rate limit, JWT)
+- [ ] Módulo de Funcionários e Folha de Pagamento (quinzenal, vale, falta, atestado, hora extra) — PRD pronta
+- [ ] Relatórios gerenciais (curva ABC de produtos, DRE simplificado)
+- [ ] Migração incremental para TypeScript
+
+---
+
+## 👤 Autor
+
+**Adby Souza**
+Análise e Desenvolvimento de Sistemas | Campina Grande - PB
