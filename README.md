@@ -43,9 +43,13 @@ O Padaria PDV nasceu para substituir esse fluxo manual por um sistema web simple
 > _Adicione aqui prints das telas principais: PDV/Caixa, Estoque, Encomendas, Relatórios. Recomendo salvar em `docs/screenshots/` e referenciar como abaixo._
 
 ```md
-[Tela de Caixa](docs/screenshots/caixa.png)
-[Controle de Estoque](docs/screenshots/estoque.png)
-[Encomendas](docs/screenshots/encomendas.png)
+[Login](docs/screenshots/Login.png)<img width="1366" height="728" alt="Login" src="https://github.com/user-attachments/assets/eb933dc8-b7b1-45fa-93b4-ef9a7f507cc2" />
+[Tela de Caixa](docs/screenshots/caixa.png)<img width="1366" height="728" alt="Caixa" src="https://github.com/user-attachments/assets/116be134-ca4a-4682-96dc-8a3d37b1b930" />
+[Controle de Estoque](docs/screenshots/estoque.png)<img width="1366" height="730" alt="Estoque" src="https://github.com/user-attachments/assets/159307e4-79d6-42d1-a455-1f922cbe6744" />
+[Abertura_caixa](docs/screenshots/Abertura_caixa.png)![Uploading Abertura_Caixa.PNG…]()
+[Fluxo](docs/screenshots/Fluxo.png)<img width="1366" height="728" alt="Fluxo" src="https://github.com/user-attachments/assets/7303b400-44be-4706-b996-4cdabef24f04" />
+
+
 ```
 
 ---
@@ -172,5 +176,5 @@ Detalhes de cada decisão em [`docs/adr/`](docs/adr/).
 
 ## 👤 Autor
 
-**Adby Souza**
+**Adby Muniz**
 Análise e Desenvolvimento de Sistemas | Campina Grande - PB
