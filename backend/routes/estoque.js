@@ -32,7 +32,7 @@ async function copiarEstoqueOntem(data) {
 }
 
 // GET /api/estoque?data=YYYY-MM-DD
-router.get('/', paginacao(), temPermissao('estoque'), async (req, res, next) => {
+router.get('/', paginacao(25, 500), temPermissao('estoque'), async (req, res, next) => {
   try {
     const hoje  = new Date().toISOString().split('T')[0];
     const data  = req.query.data || hoje;

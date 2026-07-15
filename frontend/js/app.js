@@ -69,6 +69,8 @@ function abrirCupomNaoFiscal(venda, itens, janela = null) {
           font-family: Consolas, 'Courier New', monospace;
           background: #fff;
           color: #111;
+          font-size: 13px;
+          line-height: 1.45;
         }
         .cupom {
           width: 72mm;
@@ -77,24 +79,26 @@ function abrirCupomNaoFiscal(venda, itens, janela = null) {
         }
         .center { text-align: center; }
         .bold { font-weight: 700; }
-        .small { font-size: 11px; }
-        .micro { font-size: 10px; }
-        .line { border-top: 1px dashed #111; margin: 4px 0; }
-        table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        th, td { padding: 2px 0; vertical-align: top; }
+        .nome-loja { font-size: 17px; letter-spacing: 0.3px; }
+        .small { font-size: 13px; }
+        .micro { font-size: 12px; }
+        .line { border-top: 1px dashed #111; margin: 6px 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 3px 0; vertical-align: top; }
         .item-qtd, .item-preco, .item-sub { text-align: right; white-space: nowrap; }
         .item-nome { width: 46%; }
         .item-qtd { width: 10%; }
         .item-preco { width: 20%; }
         .item-sub { width: 24%; }
-        .totais td { padding: 2px 0; }
+        .totais td { padding: 3px 0; font-size: 13px; }
+        .totais .bold { font-size: 14px; }
         .right { text-align: right; }
         .muted { color: #333; }
       </style>
     </head>
     <body>
       <div class="cupom">
-        <div class="center bold">${nomeLoja}</div>
+        <div class="center bold nome-loja">${nomeLoja}</div>
         <div class="center micro">${slogan}</div>
         <div class="center micro">CUPOM NÃO FISCAL</div>
         <div class="line"></div>
@@ -211,6 +215,10 @@ async function carregarDados() {
     cats = catsLista.map(c => c.nome);
     catMap = new Map(catsLista.map(c => [c.nome, c.id]));
 
+    // Busca o estoque real ANTES do primeiro render — sem isso os cards
+    // ficam sem número de estoque até a primeira venda ser feita.
+    await carregarEstoqueBackground();
+
     renderCats();
     renderGrid();
     renderItens();
@@ -261,13 +269,19 @@ function showTab(tab) {
 // ═══════════════════════════════════════════════════════════════
 //  CAIXA
 // ═══════════════════════════════════════════════════════════════
+let produtosFiltradosAtual = [];   // lista exibida no grid após filtro de categoria/busca
+let gridSelecionado        = 0;    // índice do produto "em destaque" para navegação por teclado
+
 function renderCats() {
   document.getElementById('cats').innerHTML = ['Todos', ...cats].map(c =>
     `<button class="cat-tab${c === catAtual ? ' active' : ''}" onclick="setCat('${c}')">${c}</button>`
   ).join('');
 }
 
-function setCat(c) { catAtual = c; renderCats(); renderGrid(); }
+function setCat(c) { catAtual = c; gridSelecionado = 0; renderCats(); renderGrid(); }
+
+/** Chamada pelo input de busca: reseta a seleção do grid a cada digitação. */
+function aoDigitarBusca() { gridSelecionado = 0; renderGrid(); }
 
 function renderGrid() {
   const el    = document.getElementById('grid');
@@ -276,18 +290,23 @@ function renderGrid() {
   if (catAtual !== 'Todos') pr = pr.filter(p => p.categoria === catAtual);
   if (busca) pr = pr.filter(p => p.nome.toLowerCase().includes(busca) || (p.categoria || '').toLowerCase().includes(busca));
 
+  produtosFiltradosAtual = pr;
+  if (gridSelecionado >= pr.length) gridSelecionado = pr.length - 1;
+  if (gridSelecionado < 0) gridSelecionado = 0;
+
   if (!pr.length) { el.innerHTML = '<p class="prod-sem">Nenhum produto.</p>'; return; }
 
-  el.innerHTML = pr.map(p => {
+  el.innerHTML = pr.map((p, idx) => {
     const key  = `${hoje()}_${p.id}`;
     const est  = estoqueCache.get(key);
     const atual = est ? (est.inicial + est.produzido - est.vendido) : -1;
     const baixo  = atual >= 0 && atual <= (est?.minimo ?? 5);
     const semEst = atual === 0;
+    const sel    = idx === gridSelecionado;
 
-    return `<button class="prod-btn${semEst ? ' sem-estoque' : ''}"
+    return `<button class="prod-btn${semEst ? ' sem-estoque' : ''}${sel ? ' teclado-sel' : ''}"
               id="prod-card-${p.id}"
-              onclick="addItem(${p.id})">
+              onclick="gridSelecionado=${idx};addItem(${p.id})">
       <span class="prod-icon">${p.icone || '🛒'}</span>
       <span class="prod-nome">${p.nome}</span>
       <span class="prod-preco">${fmtR(p.preco)}</span>
@@ -298,6 +317,21 @@ function renderGrid() {
         : ''}
     </button>`;
   }).join('');
+}
+
+/** Move o destaque do grid (navegação por teclado) e rola até ele ficar visível. */
+function moverSelecaoGrid(delta) {
+  if (!produtosFiltradosAtual.length) return;
+  gridSelecionado = (gridSelecionado + delta + produtosFiltradosAtual.length) % produtosFiltradosAtual.length;
+  renderGrid();
+  const ativo = produtosFiltradosAtual[gridSelecionado];
+  document.getElementById('prod-card-' + ativo.id)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+
+/** Adiciona o produto atualmente destacado no grid (via Enter). */
+function adicionarSelecaoGrid() {
+  const ativo = produtosFiltradosAtual[gridSelecionado];
+  if (ativo) addItem(ativo.id);
 }
 
 /** Atualiza apenas o card de um produto específico, sem re-render total */
@@ -387,34 +421,57 @@ function setPgto(p) {
   renderRodape();
 }
 
+let totalAtualCaixa = 0; // guarda o TOTAL calculado por último, para o troco poder ser atualizado sem re-renderizar tudo
+
 function renderRodape() {
   const keys = Object.keys(carrinho);
   const sub  = keys.reduce((s, k) => s + carrinho[k].preco * carrinho[k].quantidade, 0);
-  const dv   = parseFloat(document.getElementById('desc-val')?.value) || 0;
-  const dt   = document.getElementById('desc-tipo')?.value || 'pct';
-  const desc = dt === 'pct' ? sub * (dv / 100) : Math.min(dv, sub);
-  const total = Math.max(0, sub - desc);
+  const total = sub;
+  totalAtualCaixa = total;
+
   const recEl = document.getElementById('recebido-val');
   const rec   = recEl ? parseFloat(recEl.value) || 0 : 0;
   const troco = pgto === 'dinheiro' ? Math.max(0, rec - total) : 0;
+  const ehDinheiro = pgto === 'dinheiro';
 
   document.getElementById('totais').innerHTML = `
-    <div class="tot-linha"><span class="l">Subtotal</span><span class="v">${fmtR(sub)}</span></div>
-    ${desc > 0 ? `<div class="tot-linha"><span class="l">Desconto</span><span class="v" style="color:#e87a7a;">-${fmtR(desc)}</span></div>` : ''}
     <div class="tot-total"><span class="l">TOTAL</span><span class="v">${fmtR(total)}</span></div>
-    ${pgto === 'dinheiro' ? `
-      <div class="recebido-row" style="margin-top:6px;">
-        <label>Recebido R$</label>
-        <input class="inp-small" type="number" id="recebido-val" min="0" step="0.01"
-               value="${rec || ''}" oninput="renderRodape()" style="width:72px;">
-      </div>
-      ${rec > 0 ? `<div class="troco-info">Troco: ${fmtR(troco)}</div>` : ''}
-    ` : ''}`;
+    <div class="recebido-row" style="margin-top:6px;${ehDinheiro ? '' : 'opacity:0.35;'}">
+      <label>Recebido R$</label>
+      <input class="inp-small" type="number" id="recebido-val" min="0" step="0.01"
+             value="${rec || ''}" oninput="atualizarTroco()" style="width:72px;"
+             ${ehDinheiro ? '' : 'disabled tabindex="-1"'}>
+    </div>
+    <div class="troco-info" id="troco-info" style="${ehDinheiro && rec > 0 ? '' : 'visibility:hidden;'}">Troco: ${fmtR(troco)}</div>`;
+}
+
+/**
+ * Atualiza SÓ o texto do troco, sem tocar no <input> "Recebido".
+ * Chamada pelo oninput do próprio campo — assim o campo nunca é destruído
+ * enquanto você digita, e o cursor/foco nunca se perdem.
+ */
+function atualizarTroco() {
+  const recEl   = document.getElementById('recebido-val');
+  const trocoEl = document.getElementById('troco-info');
+  if (!recEl || !trocoEl) return;
+  const rec   = parseFloat(recEl.value) || 0;
+  const troco = pgto === 'dinheiro' ? Math.max(0, rec - totalAtualCaixa) : 0;
+  if (rec > 0 && pgto === 'dinheiro') {
+    trocoEl.style.visibility = 'visible';
+    trocoEl.textContent = 'Troco: ' + fmtR(troco);
+  } else {
+    trocoEl.style.visibility = 'hidden';
+  }
 }
 
 async function cobrar() {
   const keys = Object.keys(carrinho);
   if (!keys.length) { showToast('Carrinho vazio!', 'err'); return; }
+
+  if (!(await caixaEstaAberto())) {
+    showToast('❌ Caixa fechado. Abra o caixa antes de cobrar.', 'err');
+    return;
+  }
 
   const janelaCupom = window.open('', '_blank', 'width=420,height=700');
   if (!janelaCupom) {
@@ -432,12 +489,10 @@ async function cobrar() {
   }));
 
   const sub   = keys.reduce((s, k) => s + carrinho[k].preco * carrinho[k].quantidade, 0);
-  const dv    = parseFloat(document.getElementById('desc-val')?.value) || 0;
-  const dt    = document.getElementById('desc-tipo')?.value || 'pct';
-  const desc  = dt === 'pct' ? sub * (dv / 100) : Math.min(dv, sub);
-  const total = Math.max(0, sub - desc);
+  const desc  = 0;
+  const total = sub;
   const recEl = document.getElementById('recebido-val');
-  const rec   = recEl ? parseFloat(recEl.value) || 0 : total;
+  const rec   = pgto === 'dinheiro' ? (recEl ? parseFloat(recEl.value) || 0 : total) : total;
   const troco = pgto === 'dinheiro' ? Math.max(0, rec - total) : 0;
 
   const btn = document.querySelector('.btn-cobrar');
@@ -451,7 +506,6 @@ async function cobrar() {
     });
 
     carrinho = {};
-    if (document.getElementById('desc-val')) document.getElementById('desc-val').value = 0;
 
     renderItens();
     renderRodape();
@@ -1274,6 +1328,155 @@ async function uploadLogoAdmin() {
 }
 
 // ═══════════════════════════════════════════════════════════════
+//  ATALHOS DE TECLADO (PDV profissional)
+//  F1        → foco na busca de produtos
+//  F2 a F8   → seleciona a categoria correspondente (na ordem das abas)
+//  F9        → alterna forma de pagamento (Dinheiro → Débito → Crédito → Pix)
+//  F10       → Cobrar / registrar venda
+//  Setas     → navega entre os produtos do grid (destaque visual)
+//  Enter     → adiciona ao pedido o produto destacado no grid
+//              (funciona também digitando na busca, ou com leitor de
+//              código de barras que "digita" o código + Enter)
+//  Delete    → remove o último item adicionado ao pedido
+//  Esc       → fecha modal aberto, ou limpa o pedido (com confirmação)
+// ═══════════════════════════════════════════════════════════════
+
+/** Avança para a próxima forma de pagamento no ciclo. */
+function cicloPagamento() {
+  const ordem = ['dinheiro', 'cartao', 'credito', 'pix'];
+  const atual = ordem.indexOf(pgto);
+  const prox  = ordem[(atual + 1) % ordem.length];
+  setPgto(prox);
+}
+
+/** Remove o item mais recente do carrinho (último inserido). */
+function removerUltimoItem() {
+  const keys = Object.keys(carrinho);
+  if (!keys.length) return;
+  const ultima = keys[keys.length - 1];
+  const nome   = carrinho[ultima]?.nome || '';
+  delItem(ultima);
+  showToast('✕ Removido: ' + nome);
+}
+
+/** Clica na aba de categoria pelo índice visual (0 = Todos, 1 = próxima, ...). */
+function selecionarCategoriaPorIndice(i) {
+  const tabs = document.querySelectorAll('#cats .cat-tab');
+  tabs[i]?.click();
+}
+
+/** Esc: fecha modal aberto; se não houver modal, limpa o pedido (pede confirmação). */
+function tratarEsc() {
+  const modalAberto = document.querySelector('.modal-bg.open');
+  if (modalAberto) { fecharModal(modalAberto.id); return; }
+
+  const telaCaixaAtiva = document.getElementById('tela-caixa')?.classList.contains('active');
+  if (telaCaixaAtiva && Object.keys(carrinho).length) {
+    if (confirm('Limpar todos os itens do pedido?')) limpar();
+  }
+}
+
+const MAPA_TECLAS_CATEGORIA = { F2: 0, F3: 1, F4: 2, F5: 3, F6: 4, F7: 5, F8: 6 };
+
+function initAtalhosTeclado() {
+  document.addEventListener('keydown', (e) => {
+    // Esc funciona em qualquer aba (fecha modal / limpa pedido)
+    if (e.key === 'Escape') { tratarEsc(); return; }
+
+    // Os demais atalhos só operam com a tela do Caixa ativa e nenhum modal aberto
+    const telaCaixaAtiva = document.getElementById('tela-caixa')?.classList.contains('active');
+    if (!telaCaixaAtiva || document.querySelector('.modal-bg.open')) return;
+
+    if (e.key === 'F1') {
+      e.preventDefault();
+      document.getElementById('busca')?.focus();
+      return;
+    }
+
+    if (e.key in MAPA_TECLAS_CATEGORIA) {
+      e.preventDefault();
+      selecionarCategoriaPorIndice(MAPA_TECLAS_CATEGORIA[e.key]);
+      return;
+    }
+
+    if (e.key === 'F9') {
+      e.preventDefault();
+      cicloPagamento();
+      return;
+    }
+
+    if (e.key === 'F10') {
+      e.preventDefault();
+      cobrar();
+      return;
+    }
+
+    // "+" foca o campo "Recebido" — só faz sentido quando a forma é Dinheiro,
+    // já que nas outras formas o campo existe no DOM mas fica oculto (reserva de espaço)
+    if (e.key === '+') {
+      const campoRecebido = document.getElementById('recebido-val');
+      if (campoRecebido && pgto === 'dinheiro') {
+        e.preventDefault();
+        campoRecebido.focus();
+        campoRecebido.select();
+      }
+      return;
+    }
+
+    // A partir daqui, os atalhos abaixo NUNCA devem disparar se o usuário
+    // estiver digitando dentro de um campo (input/select/textarea) — senão
+    // "roubam" teclas como Delete e as Setas que deveriam editar o texto.
+    const emCampoDigitavel = ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+
+    // 1-4 selecionam a forma de pagamento diretamente (não conflita com a busca,
+    // que continua aceitando números normalmente enquanto estiver focada)
+    const MAPA_TECLA_PGTO = { '1': 'dinheiro', '2': 'cartao', '3': 'credito', '4': 'pix' };
+    if (!emCampoDigitavel && e.key in MAPA_TECLA_PGTO) {
+      e.preventDefault();
+      setPgto(MAPA_TECLA_PGTO[e.key]);
+      return;
+    }
+
+    if (e.key === 'Delete' && !emCampoDigitavel) {
+      e.preventDefault();
+      removerUltimoItem();
+      return;
+    }
+
+    // Setas: navegam pelo grid de produtos — só quando o foco NÃO está em
+    // nenhum campo de texto (senão precisam mover o cursor dentro do valor digitado)
+    if (!emCampoDigitavel) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        moverSelecaoGrid(1);
+        return;
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        moverSelecaoGrid(-1);
+        return;
+      }
+    }
+
+    // Enter no campo "Recebido" finaliza a venda direto (equivalente ao F10)
+    if (e.key === 'Enter' && document.activeElement?.id === 'recebido-val') {
+      e.preventDefault();
+      cobrar();
+      return;
+    }
+
+    // Enter: adiciona o produto destacado no grid — funciona fora de campos de
+    // texto, ou dentro da busca (inclusive leitor de código de barras, que
+    // "digita" o código do produto e envia Enter)
+    if (e.key === 'Enter' && (!emCampoDigitavel || document.activeElement?.id === 'busca')) {
+      e.preventDefault();
+      adicionarSelecaoGrid();
+      return;
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
@@ -1283,5 +1486,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (e.target === this) fecharModal(id);
     });
   });
+  initAtalhosTeclado();
   inicializar();
 });

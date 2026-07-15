@@ -1,5 +1,6 @@
 const db    = require('../database/db');
 const audit = require('./auditService');
+const turnoService = require('./caixaTurnoService');
 
 // ─────────────────────────────────────────────────────────────
 //  Correções em relação à versão anterior:
@@ -59,6 +60,16 @@ async function criarVenda(dados, usuario, ip) {
   // Validação básica de total — evita venda com valor inválido
   if (!total || isNaN(total) || parseFloat(total) <= 0)
     throw Object.assign(new Error('Total da venda inválido.'), { status: 400 });
+
+  // Bloqueia venda se não houver caixa aberto no turno atual.
+  // Checagem feita aqui (não só no front) para impedir venda mesmo
+  // que a chamada venha direto pra API, sem passar pela tela.
+  const turno = await turnoService.turnoAberto();
+  if (!turno)
+    throw Object.assign(
+      new Error('Caixa fechado. Abra o caixa antes de registrar vendas.'),
+      { status: 403 }
+    );
 
   const conn = await db.getConnection();
   try {
