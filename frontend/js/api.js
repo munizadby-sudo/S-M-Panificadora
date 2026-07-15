@@ -95,7 +95,7 @@ const API = {
   delEncomenda: (id)       => req('DELETE', `/api/encomendas/${id}`),
 
   // ── Estoque ──
-  getEstoque:   (dt, per)  => req('GET',  `/api/estoque?data=${dt}&periodo=${per}`),
+  getEstoque:   (dt, per)  => req('GET',  `/api/estoque?data=${dt}&limit=500`),
   saveEstoque:  (d)        => req('POST', '/api/estoque', d),
   saveEstoqueLote: (itens) => req('POST', '/api/estoque/salvar-lote', { itens }),
 

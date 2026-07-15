@@ -10,6 +10,21 @@ async function verificarCaixaAberto() {
   await carregarStatusCaixa();
 }
 
+/**
+ * Retorna true/false se o caixa do turno atual está aberto.
+ * Usada pelo cobrar() em app.js para bloquear vendas com caixa fechado.
+ * Sempre confere com o servidor (evita depender de estado antigo em tela).
+ */
+async function caixaEstaAberto() {
+  try {
+    const resp = await req('GET', '/api/caixa-turno/status');
+    _turnoAtual = resp?.turno || null;
+    return !!(resp?.aberto && _turnoAtual);
+  } catch {
+    return !!_turnoAtual; // fallback: usa o último status conhecido se a requisição falhar
+  }
+}
+
 function periodoLabel() {
   return new Date().getHours() < 14 ? 'Manhã' : 'Tarde';
 }

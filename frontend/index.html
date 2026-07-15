@@ -5,6 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Padaria Dourada — PDV</title>
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* Destaque do produto navegado via teclado (setas) */
+    .prod-btn.teclado-sel {
+      outline: 2px solid var(--gold2, #d4a24c);
+      outline-offset: -2px;
+      box-shadow: 0 0 0 3px rgba(212, 162, 76, 0.25);
+    }
+  </style>
 </head>
 <body>
 
@@ -44,7 +52,7 @@
     <div class="caixa-corpo">
       <div class="caixa-esq">
         <div class="prod-header">
-          <input class="busca-prod" type="text" id="busca" placeholder="🔍 Buscar produto..." oninput="renderGrid()">
+          <input class="busca-prod" type="text" id="busca" placeholder="🔍 Buscar produto..." oninput="aoDigitarBusca()">
         </div>
         <div class="cat-tabs" id="cats"></div>
         <div class="grid-prod" id="grid"></div>
@@ -60,20 +68,31 @@
         <div class="venda-itens" id="itens"></div>
       </div>
     </div>
+    <div id="atalhos-legenda" style="
+        display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+        padding:6px 14px;font-size:10.5px;color:var(--muted);
+        border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+        background:rgba(255,255,255,0.02);">
+      <span><b style="color:var(--gold2);">F1</b> Buscar</span>
+      <span><b style="color:var(--gold2);">F2-F8</b> Categorias</span>
+      <span><b style="color:var(--gold2);">1-4</b> Escolher pagto</span>
+      <span><b style="color:var(--gold2);">1-4</b> Forma de pagto</span>
+      <span><b style="color:var(--gold2);">F9</b> Ciclar pagto</span>
+      <span><b style="color:var(--gold2);">F10</b> Cobrar</span>
+      <span><b style="color:var(--gold2);">+</b> Focar "Recebido"</span>
+      <span><b style="color:var(--gold2);">◀▶</b> Navegar produtos</span>
+      <span><b style="color:var(--gold2);">Enter</b> Adicionar item</span>
+      <span><b style="color:var(--gold2);">Del</b> Remover último item</span>
+      <span><b style="color:var(--gold2);">Esc</b> Limpar pedido</span>
+    </div>
     <div class="rodape">
-      <button class="pgto-btn sel" id="btn-dinheiro" onclick="setPgto('dinheiro')"><span class="picon">💵</span>Dinheiro</button>
-      <button class="pgto-btn"     id="btn-cartao"   onclick="setPgto('cartao')"><span class="picon">💳</span>Débito</button>
-      <button class="pgto-btn"     id="btn-credito"  onclick="setPgto('credito')"><span class="picon">💳</span>Crédito</button>
-      <button class="pgto-btn"     id="btn-pix"      onclick="setPgto('pix')"><span class="picon">📱</span>Pix</button>
+      <div class="pgto-grid">
+        <button class="pgto-btn sel" id="btn-dinheiro" onclick="setPgto('dinheiro')"><span class="pgto-key">1</span><span class="picon">💵</span>Dinheiro</button>
+        <button class="pgto-btn"     id="btn-cartao"   onclick="setPgto('cartao')"><span class="pgto-key">2</span><span class="picon">💳</span>Débito</button>
+        <button class="pgto-btn"     id="btn-credito"  onclick="setPgto('credito')"><span class="pgto-key">3</span><span class="picon">💳</span>Crédito</button>
+        <button class="pgto-btn"     id="btn-pix"      onclick="setPgto('pix')"><span class="pgto-key">4</span><span class="picon">📱</span>Pix</button>
+      </div>
       <div class="total-painel">
-        <div class="desc-row">
-          <label>Desconto</label>
-          <input class="inp-small" type="number" id="desc-val" min="0" value="0" style="width:56px;" oninput="renderRodape()">
-          <select class="inp-small" id="desc-tipo" onchange="renderRodape()">
-            <option value="pct">%</option>
-            <option value="rs">R$</option>
-          </select>
-        </div>
         <div id="totais"></div>
       </div>
       <button class="btn-cobrar" onclick="cobrar()">COBRAR<span class="sub">▶ registrar venda</span></button>
